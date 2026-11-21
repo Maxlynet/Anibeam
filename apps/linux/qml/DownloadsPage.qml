@@ -485,7 +485,7 @@ Item {
         var t = c.titles || {}
         var queries = page.queriesOf(page.namesOfCard(c), t.romaji || c.title)
         return { title: page.nameOfCard(c, typed || ""), query: queries[0], queries: queries, poster: c.poster || "", cubes: c.cubes || "", here: c.episodes_here || null, total: c.total_episodes || 0,
-                 anilistId: c.match_info && c.match_info.anilist_id ? c.match_info.anilist_id : 0, seriesId: c.id, status: c.status || "", format: c.format || "", year: c.year || 0, nextAiring: c.next_airing || null,
+                 names: page.namesOfCard(c), anilistId: c.match_info && c.match_info.anilist_id ? c.match_info.anilist_id : 0, seriesId: c.id, status: c.status || "", format: c.format || "", year: c.year || 0, nextAiring: c.next_airing || null,
                  airing: c.status === "Releasing" || !!c.next_airing, folderName: Fmt.baseName(c.path || "") }
     }
     function showFromHit(h, typed) {
@@ -494,7 +494,7 @@ Item {
         // A show not in the library is saved under its own name, but never the native one:
         // the library links folders by their latin titles
         return { title: title, saveName: title === h.native ? (h.romaji || h.english || h.title) : title, query: queries[0], queries: queries, poster: h.cover_url || "", cubes: h.episodes ? "g".repeat(Math.min(h.episodes, 400)) : "", total: h.episodes || 0,
-                 anilistId: h.id || 0, seriesId: -1, status: "", format: h.format || "", year: h.year || 0, nextAiring: null, airing: false, folderName: "" }
+                 names: [h.romaji, h.english, h.title, h.native].filter(function(n) { return !!n }), anilistId: h.id || 0, seriesId: -1, status: "", format: h.format || "", year: h.year || 0, nextAiring: null, airing: false, folderName: "" }
     }
     function showFromLink(s) {
         for (var i = 0; i < libCards.length; i++) if (libCards[i].id === s.series_id) return page.showFromCard(libCards[i])
