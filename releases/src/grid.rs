@@ -104,12 +104,21 @@ static ROMAN_RE: LazyLock<Regex> = LazyLock::new(|| {
 static LETTER_END_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\s[A-Z][^A-Za-z0-9]*$").expect("letter end compiles"));
 /// A sequel's marks on a word: `Gintama'`, `Gintama°`, `Gochuumon wa Usagi Desu ka??`,
-/// `Hataraku Saibou!!`, or a full stop ending the name, `Gintama.`. A possessive
-/// (`Journey's End`) is no mark.
+/// `Hataraku Saibou!!`, one `?` or `!` with more of the name after it, `Kaguya-sama wa
+/// Kokurasetai? Tensai-tachi no Renai Zunousen`, or a full stop ending the name,
+/// `Gintama.`. A possessive (`Journey's End`) is no mark, nor one `?` or `!` ending a name:
+/// first seasons end in one (`Is the Order a Rabbit?`, `Cells at Work!`).
 static MARKS_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[A-Za-z0-9](?:[!?]{2,}|['’′″°]+)(?:[^A-Za-z0-9]|$)|[A-Za-z0-9]\.\s*$")
-        .expect("marks compile")
+    Regex::new(
+        r"[A-Za-z0-9](?:[!?]{2,}|['’′″°]+)(?:[^A-Za-z0-9]|$)|[A-Za-z0-9][!?]\s+[A-Za-z0-9]|[A-Za-z0-9]\.\s*$",
+    )
+    .expect("marks compile")
 });
+/// A subtitle after a name's first `: ` or ` - `: `Kaguya-sama wa Kokurasetai: Ultra
+/// Romantic`. A colon inside a word (`Re:Zero`) or a dash on a word (`-Starting Life in
+/// Another World-`) leads none in.
+static SUBTITLE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^.*?(?::\s+|\s-\s+)(\S.*)$").expect("subtitle compiles"));
 static SEASON_WORD_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?i)(?-u:\b)(?:season|part|cour|final|zoku|second|third|fourth|fifth|sequel)(?-u:\b)",
@@ -135,6 +144,23 @@ fn own_names(show: &Show) -> Vec<&str> {
     } else {
         show.names.iter().map(String::as_str).collect()
     }
+}
+
+/// Whether one of the show's names carries a subtitle that may name a later season by its
+/// arc (`Kimetsu no Yaiba: Yuukaku-hen`, `Kaguya-sama: Love is War -Ultra Romantic-`): a
+/// subtitle (`SUBTITLE_RE`) whose words no name without one carries. A subtitle that only
+/// repeats another name (`Demon Slayer: Kimetsu no Yaiba` beside `Kimetsu no Yaiba`) is the
+/// same show in two languages, and names nothing.
+fn names_a_part(names: &[&str]) -> bool {
+    let plain = words_of(names.iter().copied().filter(|n| !SUBTITLE_RE.is_match(n)));
+    names
+        .iter()
+        .filter_map(|n| SUBTITLE_RE.captures(n))
+        .any(|c| {
+            words_of([&c[1]])
+                .first()
+                .is_some_and(|sub| !plain.iter().any(|ws| sub.iter().all(|w| ws.contains(w))))
+        })
 }
 
 /// The season one of the show's own names states: "2nd Season", "Season 4", "S2".
@@ -165,9 +191,10 @@ fn season_hint(name: &str) -> bool {
 ///
 /// A show whose names state none is taken for its first season only when nothing says
 /// otherwise: it is an AniList entry, short enough to be one season, none of its names
-/// hints at a season, and the release carries every word of one of its names. A later
-/// season known by its arc's name ("Yuukaku-hen") is left out of a release that says only
-/// "Season 2", which may be it.
+/// hints at a season or carries a subtitle that may name one (`names_a_part`), and the
+/// release carries every word of one of its names. A later season known by its arc's
+/// name ("Yuukaku-hen", "Ultra Romantic") keeps its releases, which carry that name and
+/// say "Season 3" besides.
 fn another_season(show: &Show, title: &str, theirs: u32, in_words: bool) -> bool {
     if let Some(ours) = stated_season(show) {
         return in_words && theirs != ours;
@@ -177,6 +204,7 @@ fn another_season(show: &Show, title: &str, theirs: u32, in_words: bool) -> bool
         && show.anilist
         && (1..=ONE_SEASON).contains(&show.total)
         && !names.iter().any(|n| season_hint(n))
+        && !names_a_part(&names)
         && carries_a_name(&words_of(names), title)
 }
 
@@ -225,7 +253,8 @@ pub fn names_show(show: &Show, title: &str) -> bool {
 }
 
 /// The releases that name the show and no other season of it (`another_season`, by the
-/// season their facts read), with their facts; and how many were dropped.
+/// season their facts read, else the one their title writes out), with their facts; and
+/// how many were dropped.
 pub fn of_show(
     show: &Show,
     items: &[Release],
@@ -234,7 +263,10 @@ pub fn of_show(
     let mut out_items = Vec::new();
     let mut out_facts = Vec::new();
     for (i, item) in items.iter().enumerate() {
-        let season = facts.get(i).and_then(|f| f.season);
+        let season = facts
+            .get(i)
+            .and_then(|f| f.season)
+            .or_else(|| facts::season_word(&item.title));
         if names_show(show, &item.title)
             && !season.is_some_and(|s| {
                 another_season(show, &item.title, s, facts::season_in_words(&item.title))
@@ -875,6 +907,99 @@ mod tests {
             ..entry("Breaking Bad", &["Breaking Bad"], 13)
         };
         assert!(keeps(&tv, "Breaking Bad S05E01 1080p WEB h264-GRP"));
+    }
+
+    #[test]
+    fn a_sequel_named_by_its_subtitle_keeps_its_releases() {
+        // Kaguya-sama's third season, known by its arc; its releases spell the arc out and
+        // say "Season 3" besides
+        let ultra = entry(
+            "Kaguya-sama wa Kokurasetai: Ultra Romantic",
+            &[
+                "Kaguya-sama wa Kokurasetai: Ultra Romantic",
+                "Kaguya-sama: Love is War -Ultra Romantic-",
+            ],
+            13,
+        );
+        for title in [
+            "Kaguya-sama Love Is War Ultra Romantic S03E05 1080p WEB h264-GRP",
+            "[Judas] Kaguya-sama wa Kokurasetai - Ultra Romantic (Season 3) [Batch]",
+        ] {
+            assert!(keeps(&ultra, title), "{title}");
+        }
+        // Its second, marked by one "?" in each name
+        let second = entry(
+            "Kaguya-sama wa Kokurasetai? Tensai-tachi no Renai Zunousen",
+            &[
+                "Kaguya-sama wa Kokurasetai? Tensai-tachi no Renai Zunousen",
+                "Kaguya-sama: Love is War?",
+            ],
+            12,
+        );
+        assert!(keeps(
+            &second,
+            "Kaguya-sama Love is War S02E01 1080p WEB h264-GRP"
+        ));
+        // Either mark alone is enough
+        let english = entry(
+            "Kaguya-sama: Love is War?",
+            &["Kaguya-sama: Love is War?"],
+            12,
+        );
+        assert!(keeps(
+            &english,
+            "Kaguya-sama Love is War S02E01 1080p WEB h264-GRP"
+        ));
+        assert!(season_hint(
+            "Kaguya-sama wa Kokurasetai? Tensai-tachi no Renai Zunousen"
+        ));
+        assert!(!season_hint("Is the Order a Rabbit?"));
+        assert!(!season_hint("Cells at Work!"));
+        // Its first, whose English name is a subtitle too, cannot rule the others out
+        let first = entry(
+            "Kaguya-sama wa Kokurasetai: Tensai-tachi no Renai Zunousen",
+            &[
+                "Kaguya-sama wa Kokurasetai: Tensai-tachi no Renai Zunousen",
+                "Kaguya-sama: Love is War",
+            ],
+            12,
+        );
+        assert!(keeps(
+            &first,
+            "Kaguya-sama Love is War S02E01 1080p WEB h264-GRP"
+        ));
+        // Demon Slayer's arc, by its subtitle alone, keeps "Season 2" and "Season 3"
+        let arc = Show {
+            names: vec![
+                "Kimetsu no Yaiba: Yuukaku-hen".into(),
+                "Demon Slayer: Kimetsu no Yaiba Entertainment District Arc".into(),
+            ],
+            ..entry("Kimetsu no Yaiba: Yuukaku-hen", &["Kimetsu no Yaiba 2"], 11)
+        };
+        assert!(keeps(&arc, &judas("Kimetsu no Yaiba", 2)));
+        assert!(keeps(&arc, "Kimetsu no Yaiba Season 2 - 05 [1080p]"));
+        // A colon inside a word or a dash on one is no subtitle: Re:Zero's first season
+        // still leaves its fourth out, by the season its title writes out
+        let (rezero, _) = rezero();
+        assert!(!names_a_part(&own_names(&rezero)));
+        assert!(!keeps(&rezero, FOURTH_BATCH));
+        assert!(!keeps(
+            &rezero,
+            "[Judas] Re:Zero kara Hajimeru Isekai Seikatsu (Season 04) [1080p][Batch]"
+        ));
+        // A subtitle that repeats another name is the same show: Demon Slayer's first
+        // season still leaves "Season 2" out, written as a batch or with an episode
+        let kny = entry(
+            "Kimetsu no Yaiba",
+            &["Kimetsu no Yaiba", "Demon Slayer: Kimetsu no Yaiba"],
+            26,
+        );
+        assert!(!keeps(&kny, &judas("Kimetsu no Yaiba", 2)));
+        assert!(!keeps(&kny, "Kimetsu no Yaiba Season 2 - 05 [1080p]"));
+        assert!(!keeps(
+            &kny,
+            "[Grp] Kimetsu no Yaiba Complete Season 2 [1080p]"
+        ));
     }
 
     /// The batch `[Judas] <name> (Season <n>) [1080p][Batch]`.

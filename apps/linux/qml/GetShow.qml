@@ -102,23 +102,29 @@ Item {
     // What a title or a name says of its season outside an SxxEyy marker: { season, words,
     // span }. The first season it states, unless that is the near end of a span (Season 1-4,
     // S01 - S04, Season 1 ~ 3, S1+S2, Season 1 & 2). A spaced dash and a padded number after
-    // it is an episode (Season 2 - 03), one unpadded digit past the season a span's far end
-    // (Season 1 - 4). No number after a season named in words is one (The Final Season 05).
+    // it is an episode (Season 2 - 03), one unpadded digit past a season written in words a
+    // span's far end (Season 1 - 4), past a code the episode (S2 - 7). No number after a
+    // season named in words is one (The Final Season 05), and a range after Complete Season
+    // is episodes (Complete Season 01-12).
     function seasonSaid(title) {
         var text = String(title || ""), m
         var re = /\b(?:season\s*([0-9]{1,2})|([0-9]{1,2})(?:st|nd|rd|th)\s+season|s([0-9]{1,2}))\b/gi
         while ((m = re.exec(text)) !== null) {
             var before = text.slice(0, m.index)
-            if (m[1] !== undefined && /\b(?:final|complete|last)\s+$/i.test(before)) continue
+            if (m[1] !== undefined && /\b(?:final|last)\s+$/i.test(before)) continue
             if (/(?:season\s*|\bs)[0-9]{1,2}\s*(?:[-~+&]|and\s)\s*$/i.test(before)) continue
+            var next = /^(\s*)(?:([-~+&])|and\s)(\s*)((?:season|s)\s*)?([0-9]{1,2})(?:[^0-9]|$)/i
+            var after = text.slice(m.index + m[0].length)
+            if (m[1] !== undefined && /\bcomplete\s+$/i.test(before) && next.test(after)) continue
             var season = parseInt(m[1] !== undefined ? m[1] : (m[2] !== undefined ? m[2] : m[3]), 10)
-            var n = /^(\s*)(?:([-~+&])|and\s)(\s*)((?:season|s)\s*)?([0-9]{1,2})(?:[^0-9]|$)/i.exec(text.slice(m.index + m[0].length))
+            var words = m[3] === undefined
+            var n = next.exec(after)
             if (n) {
                 var spaced = n[1] !== "" || n[3] !== ""
-                if (n[4] !== undefined || n[2] !== "-" || !spaced || (n[5].length === 1 && parseInt(n[5], 10) > season))
+                if (n[4] !== undefined || n[2] !== "-" || !spaced || (words && n[5].length === 1 && parseInt(n[5], 10) > season))
                     return { season: null, words: false, span: true }
             }
-            return { season: season, words: m[3] === undefined, span: false }
+            return { season: season, words: words, span: false }
         }
         return { season: null, words: false, span: false }
     }
@@ -130,15 +136,32 @@ Item {
     // Whether a name hints at a season statedSeason cannot read: a number that is not a year,
     // a roman numeral (a lone I, V or X only ending the name: "That Time I Got Reincarnated"),
     // a capital letter or a sequel's marks on its last word (Railgun S, Gintama', Gintama.,
-    // Usagi Desu ka??, Saibou!!), a word such as Part or Final, or a non-Latin season mark
+    // Usagi Desu ka??, Saibou!!), one ? or ! with more of the name after it (Kokurasetai?
+    // Tensai-tachi), a word such as Part or Final, or a non-Latin season mark. One ? or !
+    // ending a name is none: first seasons end in one (Is the Order a Rabbit?, Cells at Work!)
     function seasonHint(name) {
         var text = String(name || "")
         return /[0-9]/.test(text.replace(/\b(?:19|20)[0-9]{2}\b/g, " "))
             || /\b(?:II|III|IV|VI|VII|VIII|IX|XI|XII)\b/.test(text)
             || /\s[A-Z][^A-Za-z0-9]*$/.test(text)
-            || /[A-Za-z0-9](?:[!?]{2,}|['’′″°]+)(?:[^A-Za-z0-9]|$)|[A-Za-z0-9]\.\s*$/.test(text)
+            || /[A-Za-z0-9](?:[!?]{2,}|['’′″°]+)(?:[^A-Za-z0-9]|$)|[A-Za-z0-9][!?]\s+[A-Za-z0-9]|[A-Za-z0-9]\.\s*$/.test(text)
             || /\b(?:season|part|cour|final|zoku|second|third|fourth|fifth|sequel)\b/i.test(text)
             || /[第期季기]|ภาค|ซีซั่น|сезон/i.test(text)
+    }
+    // Whether one of the show's names carries a subtitle after its first ": " or " - " that
+    // may name a later season by its arc (Kimetsu no Yaiba: Yuukaku-hen, Kaguya-sama wa
+    // Kokurasetai: Ultra Romantic): one whose words no name without a subtitle carries. One
+    // that repeats another name (Demon Slayer: Kimetsu no Yaiba) names nothing; a colon in a
+    // word (Re:Zero) or a dash on one (-Starting Life in Another World-) leads none in
+    function namesAPart(names) {
+        var sub = /^.*?(?::\s+|\s-\s+)(\S.*)$/
+        var plain = wordsOf(names.filter(function(n) { return !sub.test(String(n || "")) }))
+        return names.some(function(n) {
+            var m = sub.exec(String(n || ""))
+            if (!m) return false
+            var ws = wordsOf([m[1]])
+            return ws.length > 0 && !plain.some(function(p) { return ws[0].every(function(w) { return p.indexOf(w) >= 0 }) })
+        })
     }
     // A release title's words: lower case, without its leading [group], spaced at either end
     function titleWords(title) { return " " + String(title || "").toLowerCase().replace(/^\s*\[[^\]]*\]/, "").replace(/[^a-z0-9]+/g, " ") + " " }
@@ -147,14 +170,17 @@ Item {
     // (S03E01) follows the TV listings, which number some seasons otherwise, and stays. A
     // show whose names state none is taken for its first season only when nothing says
     // otherwise: it is an AniList entry, 52 episodes at most (a longer run's releases cut
-    // seasons of their own), none of its names hints at a season, and the release carries
-    // every word of one of them. One that says only "Season 2" may be a later season known
-    // by its arc's name (Yuukaku-hen).
+    // seasons of their own), none of its names hints at a season or carries a subtitle that
+    // may name one (namesAPart), and the release carries every word of one of them. A later
+    // season known by its arc's name (Yuukaku-hen, Ultra Romantic) keeps its releases. The
+    // season is the facts' (a code), else the one the title writes out
     function anotherSeason(title, f) {
-        if (!show || !f || f.season === null || f.season === undefined) return false
-        if (statedSeason !== null) return f.season !== statedSeason && seasonInWords(title)
-        if (f.season === 1 || !(show.anilistId > 0) || !(show.total > 0 && show.total <= 52)) return false
-        if (ownNames.some(function(n) { return seasonHint(n) })) return false
+        if (!show) return false
+        var season = f && f.season !== null && f.season !== undefined ? f.season : seasonSaid(title).season
+        if (season === null) return false
+        if (statedSeason !== null) return season !== statedSeason && seasonInWords(title)
+        if (season === 1 || !(show.anilistId > 0) || !(show.total > 0 && show.total <= 52)) return false
+        if (ownNames.some(function(n) { return seasonHint(n) }) || namesAPart(ownNames)) return false
         var t = titleWords(title)
         return ownWords.some(function(ws) { return ws.every(function(w) { return t.indexOf(" " + w) >= 0 }) })
     }
