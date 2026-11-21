@@ -17,6 +17,8 @@ Write for people who use Anibeam, not as a commit log:
 The rules in full: CONTRIBUTING.md, under Patch notes.
 -->
 
+## 2.6.0 · 2026-11-21
+
 ## 2.5.0 · Watch together · 2026-11-21
 
 We're happy to bring Watch together to Anibeam, along with 13 languages, personalized recommendations on Home, and a much cleaner layout across the app.
