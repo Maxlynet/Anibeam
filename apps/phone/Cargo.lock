@@ -139,7 +139,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-android"
-version = "2.4.3"
+version = "2.5.1"
 dependencies = [
  "anibeam-companion",
  "anibeam-core",
@@ -180,7 +180,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-contract"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "chrono",
  "fluent-bundle",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-core"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-downloads",
@@ -222,7 +222,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-downloads"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-foundation"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-host-api",
@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-host"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-downloads",
@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-host-api"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "ed25519-dalek",
  "serde",
@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-library"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-metadata"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
@@ -347,7 +347,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-net"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-playback"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-downloads",
@@ -408,14 +408,14 @@ dependencies = [
 
 [[package]]
 name = "anibeam-recs"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "anibeam-releases"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
@@ -438,7 +438,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-room"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "percent-encoding",
  "serde",
@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "anibeam-trackers"
-version = "2.6.0"
+version = "2.5.1"
 dependencies = [
  "anibeam-contract",
  "anibeam-foundation",
