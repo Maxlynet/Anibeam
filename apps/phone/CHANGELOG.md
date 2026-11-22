@@ -17,6 +17,8 @@ Write for people who use Anibeam, not as a commit log:
 The rules in full: CONTRIBUTING.md, under Patch notes.
 -->
 
+## 2.6.0 · 2026-11-22
+
 ## 2.5.1 · iPhone nightly & full show pages · 2026-11-22
 
 We're happy to bring the first sideloadable iPhone nightly builds, along with full show and list management, rolling downloads, Stats, and 13 languages across the phone app.
