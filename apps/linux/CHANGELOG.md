@@ -17,6 +17,8 @@ Write for people who use Anibeam, not as a commit log:
 The rules in full: CONTRIBUTING.md, under Patch notes.
 -->
 
+## 2.6.0 · 2026-11-22
+
 ## 2.5.1 · Source list links & download fixes · 2026-11-22
 
 We're glad to follow up 2.5.0 with one-tap source list links and a few fixes for downloads and season matching.
