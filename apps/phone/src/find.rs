@@ -593,6 +593,17 @@ impl Find {
                 cubes: card.cubes.clone(),
                 here: Some(card.episodes_here.clone()),
                 folder,
+                anilist: card
+                    .match_info
+                    .as_ref()
+                    .is_some_and(|m| m.anilist_id.is_some()),
+                names: own_names(
+                    [&card.titles.romaji, &card.titles.english]
+                        .into_iter()
+                        .flatten()
+                        .chain([&card.title])
+                        .chain(card.titles.native.as_ref()),
+                ),
             },
             anilist: None,
             series: Some(card.id),
@@ -629,6 +640,8 @@ impl Find {
                 cubes: String::new(),
                 here: None,
                 folder: folder.to_string(),
+                anilist: false,
+                names: Vec::new(),
             },
             anilist: None,
             series: None,
@@ -2708,8 +2721,9 @@ fn anilist_offer(
         .next()
         .cloned()
         .unwrap_or_else(|| title.to_string());
+    let names = queries.clone();
     Offer {
-        show: fresh_show(title, queries, total, airing),
+        show: fresh_show(title, queries, names, total, airing, true),
         anilist: Some(id),
         series: None,
         in_library: false,
@@ -2721,7 +2735,16 @@ fn anilist_offer(
 }
 
 /// A show the library does not have: every episode still to get, in a folder of its own.
-fn fresh_show(title: String, queries: Vec<String>, total: u32, airing: bool) -> grid::Show {
+/// `names` are its own names, without synonyms (`grid::Show::names`); `anilist` when it is
+/// an AniList entry, which keeps each season apart.
+fn fresh_show(
+    title: String,
+    queries: Vec<String>,
+    names: Vec<String>,
+    total: u32,
+    airing: bool,
+    anilist: bool,
+) -> grid::Show {
     grid::Show {
         folder: folder_name(&title),
         title,
@@ -2730,7 +2753,21 @@ fn fresh_show(title: String, queries: Vec<String>, total: u32, airing: bool) -> 
         airing,
         cubes: "g".repeat(total.min(400) as usize),
         here: None,
+        anilist,
+        names,
     }
+}
+
+/// A show's own names, each once, as the desktop reads them: romaji, English, title and
+/// native, never a synonym. What `grid` reads its season from, from the library or a search.
+fn own_names<'a>(names: impl IntoIterator<Item = &'a String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for n in names {
+        if !n.is_empty() && !out.contains(n) {
+            out.push(n.clone());
+        }
+    }
+    out
 }
 
 /// A search hit's names, the same search that typing the title runs, for a show Airing
@@ -2784,7 +2821,20 @@ fn offer_of_hit(h: &SearchResult, poster: String) -> Offer {
         facts.push(y.to_string());
     }
     Offer {
-        show: fresh_show(title, queries, total, h.airing),
+        show: fresh_show(
+            title,
+            queries,
+            own_names(
+                [&h.romaji, &h.english]
+                    .into_iter()
+                    .flatten()
+                    .chain([&h.title])
+                    .chain(h.native.as_ref()),
+            ),
+            total,
+            h.airing,
+            matches!(h.provider, anibeam_core::Provider::Anilist),
+        ),
         anilist: matches!(h.provider, anibeam_core::Provider::Anilist).then_some(h.id),
         series: None,
         in_library: false,
