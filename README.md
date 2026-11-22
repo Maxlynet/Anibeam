@@ -156,6 +156,8 @@ If it complains about FUSE, install `libfuse2` (`libfuse2t64` on Ubuntu 24.04) o
 
 AppImage, Windows, and macOS builds update themselves in-app (switch between Stable and Nightly in **Settings > About**). AUR, apt, and dnf installs update through your system package manager.
 
+Want to check the code (or have an AI agent review it) before installing? [docs/safety-audit.md](docs/safety-audit.md) maps every installer, network host, credential store, subprocess, local listener, and CI build workflow, alongside commands to verify the whole tree. See also [Privacy](https://anibeam.app/privacy/) and [SECURITY.md](SECURITY.md).
+
 ## Getting started
 
 On first launch, Anibeam walks you through a short setup (every step is optional, and you can re-run it anytime under **Settings > About > Run setup again**):

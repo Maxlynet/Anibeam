@@ -108,6 +108,10 @@ Read `docs/agents/backlog-review.md` before reviewing the backlog or filling the
 
 Single-context: one `CONTEXT.md` at the root and ADRs under `docs/adr/`. See `docs/agents/domain.md`.
 
+### Safety audit
+
+If you are checking whether Anibeam is safe to install rather than working on it, start at `docs/safety-audit.md`: it indexes the installers, updater, outbound hosts, secret storage, subprocesses, local listeners, mobile permissions, and release workflows, plus whole-repo commands to check nothing sits outside that list.
+
 ### Subagents
 
 Subagent use on this project is heavily allowed and expected. Fan work out to parallel subagents split by file ownership (commit by explicit path). Use Haiku for research, fix specs, captures, visual review, drive scripts, test runs and release builds; keep Opus for the final implementation. Never block the main conversation on a build or a long wait.
