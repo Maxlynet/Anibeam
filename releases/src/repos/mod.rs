@@ -1374,7 +1374,7 @@ pub trait AnirssEndpoints: Send + Sync {
 /// `have` is anirss's list as just read; true when anirss was changed and its list needs
 /// reading again.
 pub async fn sync_anirss(
-    services: &Services,
+    services: &Arc<Services>,
     client: &dyn AnirssEndpoints,
     writes: bool,
     have: &[SearchEndpoint],
@@ -1382,10 +1382,17 @@ pub async fn sync_anirss(
     if !writes {
         return false;
     }
-    let want: Vec<Runnable> = runnable(services)
-        .into_iter()
-        .filter(|r| ANIRSS_KINDS.contains(&r.endpoint.kind.as_str()))
-        .collect();
+    let owner = services.clone();
+    let Ok(want) = tokio::task::spawn_blocking(move || {
+        runnable(&owner)
+            .into_iter()
+            .filter(|r| ANIRSS_KINDS.contains(&r.endpoint.kind.as_str()))
+            .collect::<Vec<Runnable>>()
+    })
+    .await
+    else {
+        return false;
+    };
     let mut synced = read_synced(services);
     let before = synced.clone();
     let mut changed = false;
@@ -1797,8 +1804,9 @@ fn set_fronts(services: &Services) {
 
 /// The core's client for an endpoint fetch outside the search (a feed read again after
 /// anirss's search, a subscription's feed, a `.torrent`): paced like the search, to every
-/// installed definition's rate, switched off or not, since the rate is the site's. Reads no
-/// credentials.
+/// installed definition's rate, switched off or not, since the rate is the site's. May read
+/// credentials from the secret store to resolve placeholders like `{host}` in rate-limited
+/// definitions, so async tasks call it through `spawn_blocking`.
 pub fn endpoint_http(services: &Services) -> Paced {
     set_fronts(services);
     let secrets = services.secrets();
